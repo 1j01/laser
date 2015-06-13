@@ -6,7 +6,7 @@ canvas = document.body.appendChild document.createElement "canvas"
 ctx = canvas.getContext "2d"
 
 # Some sort of... pointing device!?
-mouse = x: Infinity, y: Infinity, body: new p2.Body
+mouse = position: p2.vec2.create(), body: new p2.Body
 
 # Create a World
 @world = new p2.World gravity: [0, -10]
@@ -167,7 +167,7 @@ render = ->
 	laser.draw()
 	
 	ctx.beginPath()
-	ctx.arc(mouse.x, mouse.y, 0.04, 0, tau)
+	ctx.arc(mouse.position[0], mouse.position[1], 0.04, 0, tau)
 	ctx.fillStyle = "rgba(255, 255, 255, 0.5)"
 	ctx.fill()
 	
@@ -189,19 +189,12 @@ do animate = ->
 	requestAnimationFrame animate
 
 update_mouse_position = (e)->
-	mouse.x = (e.pageX - view.centerX) / view.scaleX
-	mouse.y = (e.pageY - view.centerY) / view.scaleY
-	mouse.body.position[0] = mouse.x
-	mouse.body.position[1] = mouse.y
-
-window.addEventListener "mousemove", (e)->
-	update_mouse_position e
-
-# isNearLine = (startX, startY, endX, endY, px, py)->
-# 	tolerance = 1
-# 	f = (x)-> (endY - startY) / (endX - startX) * (x - startX) + startY
-# 	(startX <= px <= endX or startX >= px >= endX) and
-# 	Math.abs(f(px) - py) < tolerance
+	mouse.position[0] = (e.pageX - view.centerX) / view.scaleX
+	mouse.position[1] = (e.pageY - view.centerY) / view.scaleY
+	if mouse.constraint
+		p2.vec2.copy mouse.constraint.pivotA, mouse.position
+		mouse.constraint.bodyA.wakeUp()
+		mouse.constraint.bodyB.wakeUp()
 
 dist2 = (v, w)-> (v[0] - w[0]) ** 2 + (v[1] - w[1]) ** 2
 distToSegmentSquared = (p, v, w)->
@@ -217,24 +210,16 @@ distToSegmentSquared = (p, v, w)->
 distToSegment = (p, v, w)-> Math.sqrt(distToSegmentSquared(p, v, w))
 
 
+window.addEventListener "mousemove", (e)->
+	update_mouse_position e
+
 canvas.addEventListener "mousedown", (e)->
 	update_mouse_position e
 	for laser in lasers
-		# [startX, startY] = laser.start
-		# [endX, endY] = laser.end
-		# if isNearLine startX, startY, endX, endY, mouse.x, mouse.y
-		if distToSegment([mouse.x, mouse.y], laser.start, laser.end) < 0.1
-			# console.log "near laser"
-			
-			# add mouse.constraint = new p2.RevoluteConstraint mouse.body, laser.butt, localPivotA: [0, 0], localPivotB: [0, 0]
-			
-			add mouse.constraint = new p2.DistanceConstraint mouse.body, laser.butt, localPivotA: [0, 0], localPivotB: [0, 0]
-			# add mouse.constraint = new p2.DistanceConstraint mouse.body, laser.body1, localPivotA: [0, 0], localPivotB: [0, 0]
-			# add mouse.constraint = new p2.DistanceConstraint mouse.body, laser.body2, localPivotA: [0, 0], localPivotB: [0, 0]
-			
-			# laserMousePivot = [0, 0]
-			# p2.vec2.toLocalFrame laserMousePivot, [mouse.x, mouse.y], laser.butt.position, laser.butt.angle
-			# add mouse.constraint = new p2.RevoluteConstraint mouse.body, laser.butt, localPivotA: [0, 0], localPivotB: laserMousePivot
+		if distToSegment(mouse.position, laser.start, laser.end) < 0.1
+			laserMousePivot = [0, 0]
+			p2.vec2.toLocalFrame laserMousePivot, mouse.position, laser.butt.position, laser.butt.angle
+			add mouse.constraint = new p2.RevoluteConstraint mouse.body, laser.butt, localPivotA: [0, 0], localPivotB: laserMousePivot
 
 window.addEventListener "mouseup", (e)->
 	update_mouse_position e
