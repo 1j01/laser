@@ -14,7 +14,7 @@ mouse = x: Infinity, y: Infinity, body: new p2.Body
 # Set high friction
 world.defaultContactMaterial.friction = 100
 
-# A little shortcut
+# A couple helpers for adding and removing things from the world
 add = (thing)->
 	switch
 		when thing instanceof p2.Body
@@ -24,6 +24,17 @@ add = (thing)->
 		else
 			throw new Error "I don't know how to add #{thing} to the world"
 
+remove = (thing)->
+	switch
+		when thing instanceof p2.Body
+			world.removeBody thing
+		when thing instanceof p2.Constraint
+			world.removeConstraint thing
+		else
+			throw new Error "I don't know how to remove #{thing} from the world"
+	
+
+# A glorified box
 class Room
 	constructor: ->
 		room_width = 8
@@ -78,10 +89,10 @@ class Laser
 	update: ->
 		[x1, y1] = @body1.position
 		[x2, y2] = @body2.position
-		{@angle} = @butt
+		{@angle} = @body1
 		@x = (x1 + x2) / 2
 		@y = (y1 + y2) / 2
-		@start = [@x, @y]
+		@start = [@x + Math.cos(@angle)*length/2*0.9, @y + Math.sin(@angle)*length/2*0.9]
 		@end = [@x + Math.cos(@angle)*500, @y + Math.sin(@angle)*500]
 		@result.reset()
 		world.raycastClosest @start, @end, {}, @result
@@ -92,8 +103,11 @@ class Laser
 		ctx.beginPath()
 		ctx.moveTo(@start[0], @start[1])
 		ctx.lineTo(@end[0], @end[1])
-		ctx.strokeStyle = "#FF886B"
+		ctx.strokeStyle = "#EB0315"
 		ctx.lineWidth = 0.02
+		ctx.stroke()
+		ctx.strokeStyle = "rgba(255, 255, 255, 0.3)"
+		ctx.lineWidth = 0.01
 		ctx.stroke()
 		ctx.restore()
 		
@@ -130,9 +144,9 @@ room = new Room
 
 laser = new Laser position: [0, 0]
 
-setInterval ->
-	laser.body1.angularVelocity = (Math.random()*2-1) * 200
-, 1000
+# setInterval ->
+# 	laser.body1.angularVelocity = (Math.random()*2-1) * 200
+# , 1000
 
 
 view = {}
@@ -183,9 +197,48 @@ update_mouse_position = (e)->
 window.addEventListener "mousemove", (e)->
 	update_mouse_position e
 
+# isNearLine = (startX, startY, endX, endY, px, py)->
+# 	tolerance = 1
+# 	f = (x)-> (endY - startY) / (endX - startX) * (x - startX) + startY
+# 	(startX <= px <= endX or startX >= px >= endX) and
+# 	Math.abs(f(px) - py) < tolerance
+
+dist2 = (v, w)-> (v[0] - w[0]) ** 2 + (v[1] - w[1]) ** 2
+distToSegmentSquared = (p, v, w)->
+	l2 = dist2(v, w)
+	return dist2(p, v) if l2 is 0
+	t = ((p[0] - v[0]) * (w[0] - v[0]) + (p[1] - v[1]) * (w[1] - v[1])) / l2
+	return dist2(p, v) if t < 0
+	return dist2(p, w) if t > 1
+	dist2(p, [
+		v[0] + t * (w[0] - v[0])
+		v[1] + t * (w[1] - v[1])
+	])
+distToSegment = (p, v, w)-> Math.sqrt(distToSegmentSquared(p, v, w))
+
+
 canvas.addEventListener "mousedown", (e)->
 	update_mouse_position e
+	for laser in lasers
+		# [startX, startY] = laser.start
+		# [endX, endY] = laser.end
+		# if isNearLine startX, startY, endX, endY, mouse.x, mouse.y
+		if distToSegment([mouse.x, mouse.y], laser.start, laser.end) < 0.1
+			# console.log "near laser"
+			
+			# add mouse.constraint = new p2.RevoluteConstraint mouse.body, laser.butt, localPivotA: [0, 0], localPivotB: [0, 0]
+			
+			add mouse.constraint = new p2.DistanceConstraint mouse.body, laser.butt, localPivotA: [0, 0], localPivotB: [0, 0]
+			# add mouse.constraint = new p2.DistanceConstraint mouse.body, laser.body1, localPivotA: [0, 0], localPivotB: [0, 0]
+			# add mouse.constraint = new p2.DistanceConstraint mouse.body, laser.body2, localPivotA: [0, 0], localPivotB: [0, 0]
+			
+			# laserMousePivot = [0, 0]
+			# p2.vec2.toLocalFrame laserMousePivot, [mouse.x, mouse.y], laser.butt.position, laser.butt.angle
+			# add mouse.constraint = new p2.RevoluteConstraint mouse.body, laser.butt, localPivotA: [0, 0], localPivotB: laserMousePivot
 
 window.addEventListener "mouseup", (e)->
 	update_mouse_position e
+	if mouse.constraint
+		remove mouse.constraint
+		delete mouse.constraint
 
