@@ -192,9 +192,11 @@ update_mouse_position = (e)->
 	mouse.position[0] = (e.pageX - view.centerX) / view.scaleX
 	mouse.position[1] = (e.pageY - view.centerY) / view.scaleY
 	if mouse.constraint
-		p2.vec2.copy mouse.constraint.pivotA, mouse.position
-		mouse.constraint.bodyA.wakeUp()
-		mouse.constraint.bodyB.wakeUp()
+		# p2.vec2.copy mouse.body.position, mouse.position
+		p2.vec2.copy mouse.dragBy.position, mouse.position
+		# p2.vec2.copy mouse.constraint.pivotA, mouse.position
+		# mouse.constraint.bodyA.wakeUp()
+		# mouse.constraint.bodyB.wakeUp()
 
 dist2 = (v, w)-> (v[0] - w[0]) ** 2 + (v[1] - w[1]) ** 2
 distToSegmentSquared = (p, v, w)->
@@ -214,16 +216,27 @@ window.addEventListener "mousemove", (e)->
 	update_mouse_position e
 
 canvas.addEventListener "mousedown", (e)->
+	return unless e.button is 0
 	update_mouse_position e
 	for laser in lasers
 		if distToSegment(mouse.position, laser.start, laser.end) < 0.1
-			laserMousePivot = [0, 0]
-			p2.vec2.toLocalFrame laserMousePivot, mouse.position, laser.butt.position, laser.butt.angle
-			add mouse.constraint = new p2.RevoluteConstraint mouse.body, laser.butt, localPivotA: [0, 0], localPivotB: laserMousePivot
+			dist = Math.sqrt(dist2(laser.butt.position, mouse.position))
+			mousePositionOnLaser = p2.vec2.create()
+			mousePositionOnLaser[0] = laser.butt.position[0] + Math.cos(laser.angle) * dist
+			mousePositionOnLaser[1] = laser.butt.position[1] + Math.sin(laser.angle) * dist
+			add mouse.dragBy = new p2.Body position: mousePositionOnLaser
+			add mouse.dragByLockConstraint = new p2.LockConstraint laser.butt, mouse.dragBy
+			# laserMousePivot = p2.vec2.create()
+			# p2.vec2.toLocalFrame laserMousePivot, mouse.position, laser.butt.position, laser.butt.angle
+			add mouse.constraint = new p2.RevoluteConstraint mouse.body, mouse.dragBy, localPivotA: [0, 0], localPivotB: [0, 0]
 
 window.addEventListener "mouseup", (e)->
 	update_mouse_position e
 	if mouse.constraint
+		remove mouse.dragBy
+		delete mouse.dragBy
+		remove mouse.dragByLockConstraint
+		delete mouse.dragByLockConstraint
 		remove mouse.constraint
 		delete mouse.constraint
 
