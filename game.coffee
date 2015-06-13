@@ -5,6 +5,9 @@ tau = Math.PI * 2 # one turn in radians
 canvas = document.body.appendChild document.createElement "canvas"
 ctx = canvas.getContext "2d"
 
+# Some sort of... pointing device!?
+mouse = x: Infinity, y: Infinity
+
 # Create a World
 @world = new p2.World gravity: [0, -10]
 
@@ -44,12 +47,24 @@ class Laser
 	butt_length = 0.1
 	butt_width = width - side_width
 	constructor: ({position: [x, y]})->
-		add @body1 = new p2.Body position: [x + Math.cos(angle+tau*0) * width/2, y + Math.sin(angle+tau*0) * width/2], mass: 1
+		add @body1 = new p2.Body mass: 1, position: [
+			x + Math.cos(angle+tau*0) * width/2
+			y + Math.sin(angle+tau*0) * width/2
+		]
 		@body1.addShape new p2.Rectangle length, side_width
-		add @body2 = new p2.Body position: [x + Math.cos(angle+tau/2) * width/2, y + Math.sin(angle+tau/2) * width/2], mass: 1
+		
+		add @body2 = new p2.Body mass: 1, position: [
+			x + Math.cos(angle+tau/2) * width/2
+			y + Math.sin(angle+tau/2) * width/2
+		]
 		@body2.addShape new p2.Rectangle length, side_width
-		add @butt = new p2.Body position: [x + Math.cos(tau/2) * (length - butt_length)/2, y + Math.sin(tau/2) * (length - butt_length)/2], mass: 1
+		
+		add @butt = new p2.Body mass: 1, position: [
+			x + Math.cos(tau/2) * (length - butt_length)/2
+			y + Math.sin(tau/2) * (length - butt_length)/2
+		]
 		@butt.addShape new p2.Rectangle butt_length, butt_width
+		
 		add new p2.LockConstraint @body1, @body2
 		add new p2.LockConstraint @body1, @butt
 		add new p2.LockConstraint @body2, @butt
@@ -108,23 +123,34 @@ setInterval ->
 	laser.body1.angularVelocity = (Math.random()*2-1) * 200
 , 1000
 
+view = {}
+
 render = ->
 	ctx.fillStyle = "#403c45"
 	ctx.fillRect(0, 0, canvas.width, canvas.height)
-	ctx.save()
-	ctx.translate(canvas.width/2, canvas.height/2)
-	ctx.scale(100, -100)
 	
-	for body in world.bodies
-		ctx.save()
-		body.draw()
-		ctx.restore()
+	ctx.save()
+	ctx.translate(view.centerX, view.centerY)
+	ctx.scale(view.scaleX, view.scaleY)
+	
+	body.draw() for body in world.bodies
 	
 	laser.draw()
+	
+	ctx.beginPath()
+	ctx.arc(mouse.x, mouse.y, 0.04, 0, tau)
+	ctx.fillStyle = "rgba(255, 255, 255, 0.5)"
+	ctx.fill()
 	
 	ctx.restore()
 
 do animate = ->
+	view =
+		scaleX: +100
+		scaleY: -100 # (y goes up in the world, down on the canvas)
+		centerX: canvas.width/2
+		centerY: canvas.height/2
+	
 	if canvas.width isnt window.innerWidth then canvas.width = window.innerWidth
 	if canvas.height isnt window.innerHeight then canvas.height = window.innerHeight
 	
@@ -132,3 +158,9 @@ do animate = ->
 	
 	render()
 	requestAnimationFrame animate
+
+window.addEventListener "mousemove", (e)->
+	mouse =
+		x: (e.pageX - view.centerX) / view.scaleX
+		y: (e.pageY - view.centerY) / view.scaleY
+	
