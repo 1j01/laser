@@ -43,7 +43,6 @@ class Laser
 	side_width = 0.03
 	butt_length = 0.1
 	butt_width = width - side_width
-	fillStyle: "#fff"
 	constructor: ({position: [x, y]})->
 		add @body1 = new p2.Body position: [x + Math.cos(angle+tau*0) * width/2, y + Math.sin(angle+tau*0) * width/2], mass: 1
 		@body1.addShape new p2.Rectangle length, side_width
@@ -62,18 +61,30 @@ class Laser
 		{angle} = @body1
 		x = (x1 + x2) / 2
 		y = (y1 + y2) / 2
-		r = length / -4
-		start = [x + Math.cos(angle)*r, y + Math.sin(angle)*r]
+		start = [x, y]
 		end = [x + Math.cos(angle)*500, y + Math.sin(angle)*500]
 		world.raycastClosest start, end, {}, result
-		if result.hasHit then end = result.hitPointWorld
+		end = result.hitPointWorld if result.hasHit
+		ctx.save()
 		ctx.beginPath()
 		ctx.moveTo(start[0], start[1])
 		ctx.lineTo(end[0], end[1])
 		ctx.strokeStyle = "#FF886B"
 		ctx.lineWidth = 0.02
 		ctx.stroke()
+		ctx.restore()
 		
+		ctx.save()
+		ctx.translate(x, y)
+		ctx.rotate(angle)
+		ctx.beginPath()
+		ctx.rect(-length/2, -width/2, length*0.95, width)
+		ctx.fillStyle = "#222"
+		ctx.fill()
+		# ctx.lineWidth = 0.01
+		# ctx.stroke()
+		ctx.restore()
+
 
 p2.Body::fillStyle = "#bbb"
 p2.Body::draw = ->
@@ -94,7 +105,7 @@ p2.Body::draw = ->
 laser = new Laser position: [0, 0]
 
 setInterval ->
-	laser.body1.angularVelocity = if Math.random() < 0.5 then -60 else +60
+	laser.body1.angularVelocity = (Math.random()*2-1) * 200
 , 1000
 
 render = ->
