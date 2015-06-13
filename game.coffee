@@ -192,11 +192,9 @@ update_mouse_position = (e)->
 	mouse.position[0] = (e.pageX - view.centerX) / view.scaleX
 	mouse.position[1] = (e.pageY - view.centerY) / view.scaleY
 	if mouse.constraint
-		p2.vec2.copy mouse.body.position, mouse.position
-		# p2.vec2.copy mouse.dragBy.position, mouse.position
-		# p2.vec2.copy mouse.constraint.pivotA, mouse.position
-		# mouse.constraint.bodyA.wakeUp()
-		# mouse.constraint.bodyB.wakeUp()
+		p2.vec2.copy mouse.constraint.pivotA, mouse.position
+		mouse.constraint.bodyA.wakeUp()
+		mouse.constraint.bodyB.wakeUp()
 
 dist2 = (v, w)-> (v[0] - w[0]) ** 2 + (v[1] - w[1]) ** 2
 distToSegmentSquared = (p, v, w)->
@@ -225,7 +223,8 @@ canvas.addEventListener "mousedown", (e)->
 			mousePositionOnLaser[0] = laser.butt.position[0] + Math.cos(laser.angle) * dist
 			mousePositionOnLaser[1] = laser.butt.position[1] + Math.sin(laser.angle) * dist
 			add mouse.dragBy = new p2.Body position: mousePositionOnLaser, mass: 1
-			mouse.dragBy.addShape new p2.Rectangle 0.01, 0.5
+			# mouse.dragBy.addShape new p2.Rectangle 0.01, 0.5
+			mouse.dragBy.addShape new p2.Circle 0.000001
 			add mouse.dragByLockConstraint = new p2.LockConstraint laser.body1, mouse.dragBy
 			# laserMousePivot = p2.vec2.create()
 			# p2.vec2.toLocalFrame laserMousePivot, mouse.position, laser.butt.position, laser.butt.angle
