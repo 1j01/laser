@@ -6,12 +6,12 @@ canvas = document.body.appendChild document.createElement "canvas"
 ctx = canvas.getContext "2d"
 
 # Some sort of... pointing device!?
-mouse = x: Infinity, y: Infinity
+mouse = x: Infinity, y: Infinity, body: new p2.Body
 
 # Create a World
 @world = new p2.World gravity: [0, -10]
 
-# Set high friction so the wheels don't slip
+# Set high friction
 world.defaultContactMaterial.friction = 100
 
 # A little shortcut
@@ -24,38 +24,44 @@ add = (thing)->
 		else
 			throw new Error "I don't know how to add #{thing} to the world"
 
-# Make a room with walls, a foor, and a ceiling
-room_width = 8
-room_height = 5
-wall_thickness = 0.2
-fleiling_thickness = 0.2
+class Room
+	constructor: ->
+		room_width = 8
+		room_height = 5
+		wall_thickness = 0.2
+		fleiling_thickness = 0.2
 
-for x in [-room_width/2, +room_width/2]
-	add wall = new p2.Body position: [x, 0]
-	wall.addShape new p2.Rectangle wall_thickness, room_height + fleiling_thickness
+		for x in [-room_width/2, +room_width/2]
+			add wall = new p2.Body position: [x, 0]
+			wall.addShape new p2.Rectangle wall_thickness, room_height + fleiling_thickness
 
-for y in [-room_height/2, +room_height/2]
-	add fleiling = new p2.Body position: [0, y]
-	fleiling.addShape new p2.Rectangle room_width + wall_thickness, fleiling_thickness
+		for y in [-room_height/2, +room_height/2]
+			add fleiling = new p2.Body position: [0, y]
+			fleiling.addShape new p2.Rectangle room_width + wall_thickness, fleiling_thickness
+
+
+lasers = []
 
 class Laser
-	result = new p2.RaycastResult
-	angle = tau/4
 	length = 0.5
 	width = 0.14
 	side_width = 0.03
 	butt_length = 0.1
 	butt_width = width - side_width
 	constructor: ({position: [x, y]})->
+		lasers.push @
+		@beams = []
+		@result = new p2.RaycastResult
+		
 		add @body1 = new p2.Body mass: 1, position: [
-			x + Math.cos(angle+tau*0) * width/2
-			y + Math.sin(angle+tau*0) * width/2
+			x + Math.cos(+tau/4) * width/2
+			y + Math.sin(+tau/4) * width/2
 		]
 		@body1.addShape new p2.Rectangle length, side_width
 		
 		add @body2 = new p2.Body mass: 1, position: [
-			x + Math.cos(angle+tau/2) * width/2
-			y + Math.sin(angle+tau/2) * width/2
+			x + Math.cos(-tau/4) * width/2
+			y + Math.sin(-tau/4) * width/2
 		]
 		@body2.addShape new p2.Rectangle length, side_width
 		
@@ -69,29 +75,31 @@ class Laser
 		add new p2.LockConstraint @body1, @butt
 		add new p2.LockConstraint @body2, @butt
 	
-	draw: ->
-		result.reset()
+	update: ->
 		[x1, y1] = @body1.position
 		[x2, y2] = @body2.position
-		{angle} = @body1
-		x = (x1 + x2) / 2
-		y = (y1 + y2) / 2
-		start = [x, y]
-		end = [x + Math.cos(angle)*500, y + Math.sin(angle)*500]
-		world.raycastClosest start, end, {}, result
-		end = result.hitPointWorld if result.hasHit
+		{@angle} = @butt
+		@x = (x1 + x2) / 2
+		@y = (y1 + y2) / 2
+		@start = [@x, @y]
+		@end = [@x + Math.cos(@angle)*500, @y + Math.sin(@angle)*500]
+		@result.reset()
+		world.raycastClosest @start, @end, {}, @result
+		@end = @result.hitPointWorld if @result.hasHit
+	
+	draw: ->
 		ctx.save()
 		ctx.beginPath()
-		ctx.moveTo(start[0], start[1])
-		ctx.lineTo(end[0], end[1])
+		ctx.moveTo(@start[0], @start[1])
+		ctx.lineTo(@end[0], @end[1])
 		ctx.strokeStyle = "#FF886B"
 		ctx.lineWidth = 0.02
 		ctx.stroke()
 		ctx.restore()
 		
 		ctx.save()
-		ctx.translate(x, y)
-		ctx.rotate(angle)
+		ctx.translate(@x, @y)
+		ctx.rotate(@angle)
 		ctx.beginPath()
 		ctx.rect(-length/2, -width/2, length*0.95, width)
 		ctx.fillStyle = "#222"
@@ -117,11 +125,15 @@ p2.Body::draw = ->
 			ctx.fill()
 	ctx.restore()
 
+
+room = new Room
+
 laser = new Laser position: [0, 0]
 
 setInterval ->
 	laser.body1.angularVelocity = (Math.random()*2-1) * 200
 , 1000
+
 
 view = {}
 
@@ -133,8 +145,11 @@ render = ->
 	ctx.translate(view.centerX, view.centerY)
 	ctx.scale(view.scaleX, view.scaleY)
 	
-	body.draw() for body in world.bodies
+	for body in world.bodies
+		body.update?()
+		body.draw()
 	
+	laser.update()
 	laser.draw()
 	
 	ctx.beginPath()
@@ -159,8 +174,18 @@ do animate = ->
 	render()
 	requestAnimationFrame animate
 
+update_mouse_position = (e)->
+	mouse.x = (e.pageX - view.centerX) / view.scaleX
+	mouse.y = (e.pageY - view.centerY) / view.scaleY
+	mouse.body.position[0] = mouse.x
+	mouse.body.position[1] = mouse.y
+
 window.addEventListener "mousemove", (e)->
-	mouse =
-		x: (e.pageX - view.centerX) / view.scaleX
-		y: (e.pageY - view.centerY) / view.scaleY
-	
+	update_mouse_position e
+
+canvas.addEventListener "mousedown", (e)->
+	update_mouse_position e
+
+window.addEventListener "mouseup", (e)->
+	update_mouse_position e
+
