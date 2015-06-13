@@ -30,19 +30,16 @@ class LaserBody extends p2.Body
 	fillStyle: "#fff"
 	constructor: ->
 		super
-		@addShape new p2.Rectangle 0.4, 0.2
+		@addShape new p2.Rectangle 0.4, 0.1
 	
 	draw: ->
 		super
 		result.reset()
 		[x, y] = @position
 		{width, height} = @shapes[0]
-		# heheh laser jump rope
-		start = [x + Math.sin(@angle)*0.3, y + Math.cos(@angle)*0.3]
-		end = [x + Math.sin(@angle)*500, y + Math.cos(@angle)*500]
-		# r = width / 2 + 0.03
-		# start = [x + Math.cos(@angle)*r, y + Math.sin(@angle)*r]
-		# end = [x + Math.cos(@angle)*500, y + Math.sin(@angle)*500]
+		r = width / 2 + 0.01
+		start = [x + Math.cos(@angle)*r, y + Math.sin(@angle)*r]
+		end = [x + Math.cos(@angle)*500, y + Math.sin(@angle)*500]
 		world.raycastClosest start, end, {}, result
 		if result.hasHit then end = result.hitPointWorld
 		ctx.beginPath()
