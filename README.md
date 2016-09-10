@@ -6,6 +6,8 @@ This is just a silly little physics puzzle game mechanic prototype (GONE WRONG).
 [Currently](https://rawgit.com/1j01/laser/master/index.html) it feels horrible to control,
 but I'm sure there's some simple way to do it where it wouldn't.
 
+![](horrible-to-control.gif)
+
 The game would be mechanically 2D but could be 3D and use
 [this cool laser effect](http://jeromeetienne.github.io/threex.laser/examples/demo.html).
 
