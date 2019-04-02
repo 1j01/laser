@@ -67,24 +67,24 @@ class Laser
 		add @body1 = new p2.Body mass: 1, position: [
 			x + Math.cos(+tau/4) * width/2
 			y + Math.sin(+tau/4) * width/2
-		]
+		], collisionGroup: -2
 		@body1.addShape new p2.Rectangle length, side_width
 		
 		add @body2 = new p2.Body mass: 1, position: [
 			x + Math.cos(-tau/4) * width/2
 			y + Math.sin(-tau/4) * width/2
-		]
+		], collisionGroup: -2
 		@body2.addShape new p2.Rectangle length, side_width
 		
 		add @butt = new p2.Body mass: 1, position: [
 			x + Math.cos(tau/2) * (length - butt_length)/2
 			y + Math.sin(tau/2) * (length - butt_length)/2
-		]
+		], collisionGroup: -2
 		@butt.addShape new p2.Rectangle butt_length, butt_width
 		
-		add new p2.LockConstraint @body1, @body2
-		add new p2.LockConstraint @body1, @butt
-		add new p2.LockConstraint @body2, @butt
+		# add new p2.LockConstraint @body1, @body2
+		# add new p2.LockConstraint @body1, @butt
+		# add new p2.LockConstraint @body2, @butt
 	
 	update: ->
 		[x1, y1] = @body1.position
